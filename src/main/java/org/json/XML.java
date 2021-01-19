@@ -658,6 +658,65 @@ public class XML {
         return jo;
     }
 
+    public static JSONObject toJSONObject(Reader reader, JSONPointer path, JSONObject replacement) throws JSONException {
+        JSONObject originalJSON = toJSONObject(reader);
+        String keyPath = path.toString();
+        // Sample input: "/catalog/book/0"
+        if (keyPath.length() >= 1 && keyPath.startsWith("/")) {
+            keyPath = keyPath.substring(1);
+        } else {
+            System.out.println("You might not enter the right key path, please check your input again!");
+            return originalJSON;
+        }
+
+        String[] keyPathArray = keyPath.split("/");
+        return replaceHelper(originalJSON, keyPathArray, replaceJSON);
+    }
+
+    public static JSONObject replaceHelper(JSONObject object, String[] keyPathArray, JSONObject replaceJSON) {
+        JSONObject result = new JSONObject();
+
+        object.keySet().forEach(key -> {
+            if (keyPathArray.length > 1) {
+                if (keyPathArray[0].equals(key)) {
+                    Object value = object.get(key);
+
+                    if (value instanceof JSONObject) {
+                        result.put(key, replaceHelper((JSONObject) value, Arrays.copyOfRange(keyPathArray, 1, keyPathArray.length), replaceJSON));
+                    } else if (value instanceof JSONArray) {
+                        result.put(key, replaceHelper2((JSONArray) value, Arrays.copyOfRange(keyPathArray, 1, keyPathArray.length), replaceJSON));
+                    }
+                }
+            } else {
+                result.put(key, replaceJSON);
+            }
+        });
+        return result;
+    }
+
+    public static JSONArray replaceHelper2(JSONArray object, String[] keyPathArray, JSONObject replaceJSON) {
+        JSONArray result = new JSONArray();
+        Integer curInt = Integer.parseInt(keyPathArray[0]);
+
+        for (int i = 0 ; i < object.length(); i++) {
+            if (i != curInt) {
+                result.put(i, object.get(i));
+            } else {
+                if (keyPathArray.length > 1) {
+                    Object value = object.get(i);
+                    if (value instanceof JSONObject) {
+                        result.put(i, replaceHelper((JSONObject) value, Arrays.copyOfRange(keyPathArray, 1, keyPathArray.length), replaceJSON));
+                    } else if (value instanceof JSONArray) {
+                        result.put(i, replaceHelper2((JSONArray) value, Arrays.copyOfRange(keyPathArray, 1, keyPathArray.length), replaceJSON));
+                    }
+                } else {
+                    result.put(i, replaceJSON);
+                }
+            }
+        }
+        return result;
+    }
+
     /**
      * Convert a well-formed (but not necessarily valid) XML string into a
      * JSONObject. Some information may be lost in this transformation because
